@@ -26,6 +26,13 @@
             <artifactId>vertx-auth-jwt</artifactId>
             <version>3.9.3</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>jwks-rsa</artifactId>
+            <version>0.14.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>

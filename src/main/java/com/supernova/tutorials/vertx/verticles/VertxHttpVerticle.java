@@ -1,5 +1,8 @@
 package com.supernova.tutorials.vertx.verticles;
 
+import com.auth0.jwk.Jwk;
+import com.auth0.jwk.JwkProvider;
+import com.auth0.jwk.UrlJwkProvider;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonObject;
@@ -9,8 +12,15 @@ import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 
+import java.net.URL;
+import java.util.Base64;
+
 
 public class VertxHttpVerticle extends AbstractVerticle {
+
+    private final String JWKS_URL = "http://localhost:8083/auth/realms/baeldung/protocol/openid-connect/certs";
+    private final String JWKS_KID = "_b78X30O343js3QZcvCJSSHa4zUKPmIBchQmHcNpBUM";
+
     @Override
     public void start() {
         Router router = configureRouter();
@@ -47,8 +57,7 @@ public class VertxHttpVerticle extends AbstractVerticle {
 
     private void validateTokens(RoutingContext routingContext) {
         JWTAuth provider = JWTAuth.create(vertx, new JWTAuthOptions()
-                .addPubSecKey(new PubSecKeyOptions(new JsonObject().put("algorithm", "RS256").put("publicKey",
-                        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoKIgj4Q7ouWtjrVUcSCLjscOPe/Yb8gVy44kIc6r3CpoMp9wXHngfRAsrWOSINbZfIQp9PY0scf+EukYKiXkO2R9+f3nQmqo+j8last8px9u+9rEA0s8SNVwLcB2kdrv6fj4uzKf5MsUNZOVHaHYEhhafgvuTGEaAozh9fcrI1gyUTExmdUzLVmE8H2zQ6LNt+EYKhSXvTI7YY3P1Yuc+askS1cH7oF3b4Pd5PK2/rFolQIC/5Y0hA/Ub+feX+pA62l7/pnWGGG4sOP/R/Hl/E+nA5xGgQ5axWdA7AtPyWQSuUDz97WbisskykycKAMT8Exxeb6ZCt4Gfb+tVZvN0QIDAQAB"))));
+                .addPubSecKey(new PubSecKeyOptions(new JsonObject().put("algorithm", "RS256").put("publicKey", getKey()))));
         String jwt = routingContext.request().getHeader("Authorization");
         if (jwt != null && !jwt.equals("")) {
             jwt = jwt.substring(7);
@@ -57,13 +66,26 @@ public class VertxHttpVerticle extends AbstractVerticle {
                         if (result.succeeded()) {
                             routingContext.next();
                         } else {
-                            routingContext.response().setStatusCode(401);
-                            routingContext.response().end();
+                            setUnauthorized(routingContext);
                         }
                     });
         } else {
-            routingContext.response().setStatusCode(401);
-            routingContext.response().end();
+            setUnauthorized(routingContext);
         }
+    }
+
+    private String getKey() {
+        try {
+            JwkProvider provider = new UrlJwkProvider(new URL(JWKS_URL));
+            Jwk jwk = provider.get(JWKS_KID);
+            return Base64.getEncoder().encodeToString(jwk.getPublicKey().getEncoded());
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private void setUnauthorized(RoutingContext routingContext) {
+        routingContext.response().setStatusCode(401);
+        routingContext.response().end();
     }
 }
